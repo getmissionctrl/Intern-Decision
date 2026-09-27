@@ -1,0 +1,11 @@
+{
+  "backend": "hf",
+  "checkpoint": "checkpoints/intern-decision",
+  "max_length": 8192,
+  "device": "cpu",
+  "dtype": "float32",
+  "attn_implementation": "eager",
+  "thinking": {
+    "enabled": false
+  }
+}
