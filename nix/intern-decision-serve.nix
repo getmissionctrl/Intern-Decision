@@ -131,6 +131,10 @@ in
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
 
+      # Triton JIT-compiles a CUDA launcher at first GPU inference and needs a C
+      # compiler + linker on PATH (the hardened unit has none). CC is set below.
+      path = [ pkgs.stdenv.cc pkgs.binutils ];
+
       environment = {
         HOST = cfg.host;
         PORT = toString cfg.port;
@@ -145,6 +149,9 @@ in
         XDG_CACHE_HOME = "/var/lib/${cfg.stateDirectory}/cache";
         TRITON_CACHE_DIR = "/var/lib/${cfg.stateDirectory}/triton";
         TORCHINDUCTOR_CACHE_DIR = "/var/lib/${cfg.stateDirectory}/inductor";
+        # Triton reads $CC to compile its CUDA launcher; point it at the wrapped
+        # compiler (which carries the right glibc include/lib paths).
+        CC = "${pkgs.stdenv.cc}/bin/cc";
         # torch-bin bundles its own CUDA runtime but still needs the host
         # driver's libcuda.so.1 / libnvidia-ml.so, which NixOS exposes here.
         LD_LIBRARY_PATH = "/run/opengl-driver/lib";
