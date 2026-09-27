@@ -16,20 +16,6 @@ let
   # redundant bundled-CUDA pypi metadata check.
   python = python3.override {
     packageOverrides = _pyfinal: pyprev: {
-      # nixpkgs patches triton's libcuda_dirs() to hardcode NixOS's driver path,
-      # but returns the string '/run/opengl-driver/lib/libcuda.so' where
-      # library_dirs() does `[libdevice_dir, *libcuda_dirs()]` — the splat
-      # explodes the string into per-character -L flags and the runtime kernel
-      # compile fails. Return a proper single-element list of the DIR instead.
-      triton = pyprev.triton.overridePythonAttrs (o: {
-        postInstall = (o.postInstall or "") + ''
-          for f in "$out"/lib/python*/site-packages/triton/backends/nvidia/driver.py; do
-            substituteInPlace "$f" \
-              --replace-fail "return '/run/opengl-driver/lib/libcuda.so'" \
-                             "return ['/run/opengl-driver/lib']"
-          done
-        '';
-      });
       torch-bin = pyprev.torch-bin.overridePythonAttrs (_: {
         src = fetchurl {
           name = "torch-2.13.0+cu126-cp314-cp314-manylinux_2_28_x86_64.whl";

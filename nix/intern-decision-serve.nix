@@ -131,27 +131,25 @@ in
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
 
-      # Triton JIT-compiles a CUDA launcher at first GPU inference and needs a C
-      # compiler + linker on PATH (the hardened unit has none). CC is set below.
-      path = [ pkgs.stdenv.cc pkgs.binutils ];
-
       environment = {
         HOST = cfg.host;
         PORT = toString cfg.port;
         INFERENCE_CONFIG = inferenceConfig;
         MODEL_CHECKPOINT = checkpointDir;
         HF_HOME = "/var/lib/${cfg.stateDirectory}/huggingface";
+        # qwen3_5's RoPE dispatches to a torch "native" op that JIT-compiles a
+        # Triton CUDA kernel at first inference. On NixOS that path is broken
+        # (nixpkgs' triton libcuda patch mangles the linker flags) and needs a
+        # compiler in the hardened unit besides. Disable the native-JIT ops so
+        # torch falls back to the eager/aten kernels — correct, ~1.3s/inference on
+        # the 3090, and no Triton toolchain required.
+        TORCH_DISABLE_NATIVE_JIT = "1";
         # The hardened unit (ProtectSystem=strict, DynamicUser) has no writable
-        # HOME, so Triton/torch-inductor default their kernel caches to '/.triton'
-        # etc. on the read-only store root and crash the first GPU inference.
-        # Point every cache at the writable StateDirectory.
+        # HOME, so torch/HF caches would default to the read-only store root.
+        # Point them at the writable StateDirectory.
         HOME = "/var/lib/${cfg.stateDirectory}";
         XDG_CACHE_HOME = "/var/lib/${cfg.stateDirectory}/cache";
-        TRITON_CACHE_DIR = "/var/lib/${cfg.stateDirectory}/triton";
         TORCHINDUCTOR_CACHE_DIR = "/var/lib/${cfg.stateDirectory}/inductor";
-        # Triton reads $CC to compile its CUDA launcher; point it at the wrapped
-        # compiler (which carries the right glibc include/lib paths).
-        CC = "${pkgs.stdenv.cc}/bin/cc";
         # torch-bin bundles its own CUDA runtime but still needs the host
         # driver's libcuda.so.1 / libnvidia-ml.so, which NixOS exposes here.
         LD_LIBRARY_PATH = "/run/opengl-driver/lib";
