@@ -1,10 +1,11 @@
 # NixOS module: run the Intern-Decision decision server (its Jev-wire-compatible
 # /v1/jev + /v1/decisions HTTP API) as a hardened systemd service with GPU access.
 #
-# `defaultPackage` is injected by the flake's `nixosModules.default` wrapper so the
-# serving env is built against the flake's own (unstable) nixpkgs — the pinned
-# host nixpkgs ships transformers 4.51, which cannot load the qwen3_5 architecture.
-{ config, lib, pkgs, defaultPackage, ... }:
+# `internDecisionPackage` is injected via _module.args by the flake's
+# `nixosModules.default` so the serving env is built against the flake's own
+# (unstable) nixpkgs — the pinned host nixpkgs ships transformers 4.51, which
+# cannot load the qwen3_5 architecture.
+{ config, lib, pkgs, internDecisionPackage, ... }:
 let
   cfg = config.services.intern-decision;
 
@@ -51,7 +52,7 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = defaultPackage;
+      default = internDecisionPackage;
       defaultText = lib.literalExpression "intern-decision.packages.\${system}.intern-decision-serve";
       description = ''
         The intern-decision-serve package to run. Defaults to the flake's own
