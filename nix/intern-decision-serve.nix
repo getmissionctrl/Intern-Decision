@@ -137,6 +137,14 @@ in
         INFERENCE_CONFIG = inferenceConfig;
         MODEL_CHECKPOINT = checkpointDir;
         HF_HOME = "/var/lib/${cfg.stateDirectory}/huggingface";
+        # The hardened unit (ProtectSystem=strict, DynamicUser) has no writable
+        # HOME, so Triton/torch-inductor default their kernel caches to '/.triton'
+        # etc. on the read-only store root and crash the first GPU inference.
+        # Point every cache at the writable StateDirectory.
+        HOME = "/var/lib/${cfg.stateDirectory}";
+        XDG_CACHE_HOME = "/var/lib/${cfg.stateDirectory}/cache";
+        TRITON_CACHE_DIR = "/var/lib/${cfg.stateDirectory}/triton";
+        TORCHINDUCTOR_CACHE_DIR = "/var/lib/${cfg.stateDirectory}/inductor";
         # torch-bin bundles its own CUDA runtime but still needs the host
         # driver's libcuda.so.1 / libnvidia-ml.so, which NixOS exposes here.
         LD_LIBRARY_PATH = "/run/opengl-driver/lib";
