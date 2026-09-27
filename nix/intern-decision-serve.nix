@@ -36,6 +36,14 @@ let
     echo "downloading ${cfg.model} to ${checkpointDir} (first boot only) ..."
     ${downloadPy}/bin/huggingface-cli download "${cfg.model}" --local-dir "${checkpointDir}"
   '';
+
+  # Wrap the runner in a script (rather than interpolating cfg.package directly
+  # into ExecStart): the package comes from the flake's own outputs, and a raw
+  # "${cfg.package}/bin/..." ExecStart string trips nix's output-placeholder
+  # check. Embedding it in a script's text keeps the ExecStart context clean.
+  startScript = pkgs.writeShellScript "intern-decision-start" ''
+    exec ${cfg.package}/bin/intern-decision-serve
+  '';
 in
 {
   options.services.intern-decision = {
@@ -128,7 +136,7 @@ in
 
       serviceConfig = {
         ExecStartPre = downloadScript;
-        ExecStart = "${cfg.package}/bin/intern-decision-serve";
+        ExecStart = startScript;
         Restart = "on-failure";
         RestartSec = 5;
         # First boot downloads ~9 GB of weights before the server listens.
