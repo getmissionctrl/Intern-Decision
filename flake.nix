@@ -49,8 +49,14 @@
       # The serving env must be built against THIS flake's nixpkgs (unstable), not
       # the host's — hosts inject their own (pinned) pkgs, whose transformers is
       # too old. So the module defaults its package to the flake's own build.
+      # The `pkgs` in the pattern makes the module system hand pkgs to the module
+      # file (which uses it for writeText/writeShellScript). But index self.packages
+      # by a FIXED system, never the consumer's pkgs.system: forcing consumer pkgs
+      # while resolving the imports list re-enters the NixOS module fixpoint
+      # (infinite recursion) in models that don't pin pkgs via specialArgs
+      # (e.g. cachix-deploy-lib.nixos). All target hosts are x86_64-linux.
       nixosModules.default = { pkgs, ... }@args: import ./nix/intern-decision-serve.nix (args // {
-        defaultPackage = self.packages.${pkgs.system}.intern-decision-serve;
+        defaultPackage = self.packages.x86_64-linux.intern-decision-serve;
       });
     };
 }
