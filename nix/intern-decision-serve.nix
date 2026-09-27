@@ -1,11 +1,18 @@
 # NixOS module: run the Intern-Decision decision server (its Jev-wire-compatible
 # /v1/jev + /v1/decisions HTTP API) as a hardened systemd service with GPU access.
 #
-# `internDecisionPackage` is injected via _module.args by the flake's
-# `nixosModules.default` so the serving env is built against the flake's own
-# (unstable) nixpkgs — the pinned host nixpkgs ships transformers 4.51, which
-# cannot load the qwen3_5 architecture.
-{ config, lib, pkgs, internDecisionPackage, ... }:
+# `internDecisionPackage` is supplied by the flake via partial application (the
+# flake's `nixosModules.default` applies this first argument) so the serving env
+# is built against the flake's own (unstable) nixpkgs — the pinned host nixpkgs
+# ships transformers 4.51, which cannot load the qwen3_5 architecture.
+#
+# It is injected by currying, NOT via `_module.args`: adding a second
+# `_module.args` definition from an imported flake module forces the module
+# system to merge `config._module.args`, which collects every module (resolving
+# hq's `inputs`-dependent imports) and re-enters the fixpoint — infinite
+# recursion under cachix-deploy-lib.nixos.
+{ internDecisionPackage }:
+{ config, lib, pkgs, ... }:
 let
   cfg = config.services.intern-decision;
 

@@ -49,18 +49,15 @@
       # The serving env must be built against THIS flake's nixpkgs (unstable), not
       # the host's — hosts inject their own (pinned) pkgs, whose transformers is
       # too old. So the module defaults its package to the flake's own build.
-      # Inject the flake's own serving package (built against unstable — the
-      # qwen3_5 arch needs transformers 5.x) as a module arg. This is a plain
-      # attrset-module, NOT a function wrapper doing `args // {...}`: capturing and
-      # re-merging the whole module-args set forces its full spine, which re-enters
-      # the NixOS module fixpoint (infinite recursion) under models that don't pin
-      # pkgs via specialArgs (e.g. cachix-deploy-lib.nixos). Index self.packages by
-      # a fixed system for the same reason — all target hosts are x86_64-linux.
-      nixosModules.default = {
-        imports = [
-          { _module.args.internDecisionPackage = self.packages.x86_64-linux.intern-decision-serve; }
-          ./nix/intern-decision-serve.nix
-        ];
+      # Supply the flake's own serving package (built against unstable — the
+      # qwen3_5 arch needs transformers 5.x) by CURRYING the module: apply the
+      # package as the module file's first argument, yielding a plain
+      # `{ config, lib, pkgs, ... }: {...}` module. This adds no `_module.args`
+      # definition and never captures/merges the module-args spine, both of which
+      # cause infinite recursion under cachix-deploy-lib.nixos (hq/configuration.nix
+      # has `inputs`-dependent imports). Fixed system — all target hosts x86_64-linux.
+      nixosModules.default = import ./nix/intern-decision-serve.nix {
+        internDecisionPackage = self.packages.x86_64-linux.intern-decision-serve;
       };
     };
 }
